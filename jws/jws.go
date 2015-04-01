@@ -4,7 +4,7 @@
 
 // Package jws provides encoding and decoding utilities for
 // signed JWS messages.
-package jws // import "golang.org/x/oauth2/jws"
+package jws /// import "golang.org/x/oauth2/jws"
 
 import (
 	"bytes"
@@ -24,12 +24,12 @@ import (
 // permissions being requested (scopes), the target of the token, the issuer,
 // the time the token was issued, and the lifetime of the token.
 type ClaimSet struct {
-	Iss   string `json:"iss"`             // email address of the client_id of the application making the access token request
-	Scope string `json:"scope,omitempty"` // space-delimited list of the permissions the application requests
-	Aud   string `json:"aud"`             // descriptor of the intended target of the assertion (Optional).
-	Exp   int64  `json:"exp"`             // the expiration time of the assertion
-	Iat   int64  `json:"iat"`             // the time the assertion was issued.
-	Typ   string `json:"typ,omitempty"`   // token type (Optional).
+	Iss   string   `json:"iss"`             // email address of the client_id of the application making the access token request
+	Scope string   `json:"scope,omitempty"` // space-delimited list of the permissions the application requests
+	Aud   string   `json:"aud"`             // descriptor of the intended target of the assertion (Optional).
+	Exp   UnixTime `json:"exp"`             // the expiration time of the assertion
+	Iat   UnixTime `json:"iat"`             // the time the assertion was issued.
+	Typ   string   `json:"typ,omitempty"`   // token type (Optional).
 
 	// Email for which the application is requesting delegated access (Optional).
 	Sub string `json:"sub,omitempty"`
@@ -41,23 +41,18 @@ type ClaimSet struct {
 	// See http://tools.ietf.org/html/draft-jones-json-web-token-10#section-4.3
 	// This array is marshalled using custom code (see (c *ClaimSet) encode()).
 	PrivateClaims map[string]interface{} `json:"-"`
-
-	exp time.Time
-	iat time.Time
 }
 
+type UnixTime time.Time
+
 func (c *ClaimSet) encode() (string, error) {
-	if c.exp.IsZero() || c.iat.IsZero() {
+	if time.Time(c.Exp).IsZero() || time.Time(c.Iat).IsZero() {
 		// Reverting time back for machines whose time is not perfectly in sync.
 		// If client machine's time is in the future according
 		// to Google servers, an access token will not be issued.
-		now := time.Now().Add(-10 * time.Second)
-		c.iat = now
-		c.exp = now.Add(time.Hour)
+		c.Iat = UnixTime(time.Now().Add(-10 * time.Second))
+		c.Exp = UnixTime(time.Time(c.Iat).Add(time.Hour))
 	}
-
-	c.Exp = c.exp.Unix()
-	c.Iat = c.iat.Unix()
 
 	b, err := json.Marshal(c)
 	if err != nil {
